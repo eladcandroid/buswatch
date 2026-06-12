@@ -1,0 +1,20 @@
+# Build
+build/
+.gradle/
+*.iml
+.idea/
+local.properties
+.kotlin/
+
+# Signing secrets — NEVER commit
+keystore.properties
+keystore/
+*.jks
+*.keystore
+
+# OS
+.DS_Store
+
+# Dev artifacts / captured screenshots
+/*.png
+nearbybus_dump.xml
