@@ -1,0 +1,27 @@
+APP NAME
+BusWatch
+
+SHORT DESCRIPTION (max 80)
+Live bus arrivals for the stops nearest you — right on your wrist.
+
+FULL DESCRIPTION
+BusWatch shows live bus arrival times for the stops nearest you — right on your Wear OS watch. No phone needed.
+
+• Nearby mode — uses your location to find the 5 closest bus stops and shows real-time arrivals for each, nearest first.
+• Search — find any stop by name or number using voice or keyboard. Results are sorted by distance to you.
+• Live times — real-time arrivals from Israel's public-transport open data.
+• At a glance — arrival cards are colour-coded by wait time: green when a bus is due soon, red when you have time to spare.
+• Fast & offline-ready — the full stop list is built in, so finding nearby stops is instant.
+• Private — no accounts, no ads, no tracking. Your location never leaves your watch.
+
+Built for Wear OS, with full right-to-left Hebrew support and rotating-crown scrolling.
+
+----
+GRAPHICS (in store/):
+  icon-512.png            -> App icon (512x512)
+  feature-1024x500.png    -> Feature graphic (1024x500)
+  shot1-board.png .. shot4-colors.png -> Wear OS screenshots (466x466)
+
+DATA SAFETY answers: No data collected. No data shared. Location is used on-device only
+  (to find nearest stops) and is never sent off the watch; only the public stop code is sent
+  to curlbus.app to fetch arrivals.
