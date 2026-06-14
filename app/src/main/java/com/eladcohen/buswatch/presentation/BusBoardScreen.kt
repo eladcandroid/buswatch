@@ -11,7 +11,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -41,6 +45,7 @@ fun BusBoardScreen(
     link: LinkState,
     mode: BusMode,
     onOpenStops: () -> Unit,
+    onOpenMap: (StopBoard, Arrival) -> Unit,
 ) {
     val listState = rememberScalingLazyListState()
     val focusRequester = remember { FocusRequester() }
@@ -101,7 +106,7 @@ fun BusBoardScreen(
                     }
                 } else {
                     items(board.arrivals, key = { "${board.stopCode}_${it.line}" }) { arrival ->
-                        ArrivalCard(arrival)
+                        ArrivalCard(arrival) { onOpenMap(board, arrival) }
                     }
                 }
             }
@@ -127,11 +132,11 @@ private fun LinkIndicator(link: LinkState) {
 }
 
 @Composable
-private fun ArrivalCard(arrival: Arrival) {
+private fun ArrivalCard(arrival: Arrival, onClick: () -> Unit) {
     val bg = etaColor(arrival.etaMinutes)
     val bgPainter = remember(bg) { ColorPainter(bg) }
     Card(
-        onClick = {},
+        onClick = onClick,
         backgroundPainter = bgPainter,
         contentColor = Color.White,
         modifier = Modifier.fillMaxWidth(),
@@ -142,16 +147,34 @@ private fun ArrivalCard(arrival: Arrival) {
                 style = MaterialTheme.typography.button,
                 color = Color.White,
             )
-            val realtimeMark = if (arrival.realtime) "  ⏱" else ""
             val next = arrival.nextMinutes?.let { "   ·   ובעוד $it" } ?: ""
+            val etaText = buildAnnotatedString {
+                if (arrival.etaMinutes <= 0) {
+                    withStyle(SpanStyle(color = NowColor, fontWeight = FontWeight.Bold)) { append("עכשיו") }
+                } else {
+                    append("בעוד ${arrival.etaMinutes} דק׳")
+                }
+                // GPS status: ● green = tracked live, ○ gray = schedule-only.
+                append("  ")
+                if (arrival.hasGps) withStyle(SpanStyle(color = GpsLiveColor)) { append("●") }
+                else withStyle(SpanStyle(color = NoGpsColor)) { append("○") }
+                append(next)
+            }
             Text(
-                text = "בעוד ${arrival.etaMinutes} דק׳$realtimeMark$next",
+                text = etaText,
                 style = MaterialTheme.typography.caption1,
                 color = Color.White.copy(alpha = 0.9f),
             )
         }
     }
 }
+
+/** Highlight colour for a bus that is arriving right now ("עכשיו"). */
+internal val NowColor = Color(0xFFFFEB3B)
+
+/** GPS-status dot colours: live (tracked) vs schedule-only (no live position). */
+internal val GpsLiveColor = Color(0xFF00E676)
+internal val NoGpsColor = Color(0xFF9AA7B0)
 
 /** Card tint by remaining minutes: green = soon, amber = mid, red = far off. */
 private fun etaColor(minutes: Int): Color = when {
@@ -169,6 +192,7 @@ private fun BusBoardPreview() {
             link = LinkState.CONNECTED,
             mode = BusMode.NEARBY,
             onOpenStops = {},
+            onOpenMap = { _, _ -> },
         )
     }
 }

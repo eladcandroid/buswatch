@@ -8,6 +8,9 @@ data class Arrival(
     val etaMinutes: Int,
     val realtime: Boolean,
     val nextMinutes: Int?,
+    /** True when at least one visit of this line is broadcasting a live GPS
+     *  position (so it can be shown on the map). False = schedule-only. */
+    val hasGps: Boolean = false,
 )
 
 /** A stop's live board: header + ordered arrivals. */

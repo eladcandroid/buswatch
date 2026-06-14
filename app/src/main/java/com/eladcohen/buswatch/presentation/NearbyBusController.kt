@@ -119,6 +119,9 @@ class NearbyBusController(
     /** Latest known device location, for distance-sorting search results. */
     fun lastLocation(): Location? = lastLoc
 
+    /** The stops currently on the board — used to resolve a tapped card's coords. */
+    fun currentStops(): List<Stop> = current
+
     /** Pin a specific stop chosen via search; GPS stops changing the board. */
     suspend fun selectFixed(stop: Stop) {
         mode.value = BusMode.FIXED

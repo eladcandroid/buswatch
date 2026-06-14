@@ -62,6 +62,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             BusWatchTheme {
                 var onSearchScreen by remember { mutableStateOf(false) }
+                var mapTarget by remember { mutableStateOf<MapTarget?>(null) }
+                var mapStops by remember { mutableStateOf<List<Stop>>(emptyList()) }
                 val boards by controller.boards.collectAsState()
                 val link by controller.link.collectAsState()
                 val status by controller.statusText.collectAsState()
@@ -71,7 +73,24 @@ class MainActivity : ComponentActivity() {
                 BackHandler(enabled = onSearchScreen) { onSearchScreen = false }
 
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    if (onSearchScreen) {
+                    val target = mapTarget
+                    if (target != null) {
+                        val loc = controller.lastLocation()
+                        LineMapScreen(
+                            stopCode = target.stopCode,
+                            stopLat = target.lat,
+                            stopLon = target.lon,
+                            line = target.line,
+                            userLat = loc?.latitude,
+                            userLon = loc?.longitude,
+                            stops = mapStops,
+                            onStopTap = { stop ->
+                                lifecycleScope.launch { controller.selectFixed(stop) }
+                                mapTarget = null
+                            },
+                            onBack = { mapTarget = null },
+                        )
+                    } else if (onSearchScreen) {
                         StopSearchScreen(
                             results = results,
                             onNearby = {
@@ -95,6 +114,10 @@ class MainActivity : ComponentActivity() {
                                 link = link,
                                 mode = mode,
                                 onOpenStops = { onSearchScreen = true },
+                                onOpenMap = { board, arrival -> openMap(board, arrival) { t, s ->
+                                    mapStops = s
+                                    mapTarget = t
+                                } },
                             )
                         }
                     }
@@ -103,6 +126,25 @@ class MainActivity : ComponentActivity() {
         }
 
         if (hasPermission()) start() else permLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+    }
+
+    /** Resolve a tapped card to map coords + nearby stops, then open the map. */
+    private fun openMap(
+        board: com.eladcohen.buswatch.model.StopBoard,
+        arrival: com.eladcohen.buswatch.model.Arrival,
+        onReady: (MapTarget, List<Stop>) -> Unit,
+    ) {
+        val stop = controller.currentStops().firstOrNull { it.code.toString() == board.stopCode }
+        lifecycleScope.launch {
+            val near = withContext(Dispatchers.Default) {
+                runCatching { stopsDb.load() }
+                val lat = stop?.lat ?: return@withContext emptyList<Stop>()
+                stopsDb.nearestN(lat, stop.lon, MAP_STOPS)
+            }
+            val lat = stop?.lat ?: near.firstOrNull()?.lat ?: return@launch
+            val lon = stop?.lon ?: near.firstOrNull()?.lon ?: return@launch
+            onReady(MapTarget(board.stopCode, lat, lon, arrival.line), near)
+        }
     }
 
     private fun launchVoiceSearch() {
@@ -130,5 +172,14 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val KEY_QUERY = "q"
+        private const val MAP_STOPS = 160
     }
 }
+
+/** A line-at-a-stop the live map is opened for. */
+data class MapTarget(
+    val stopCode: String,
+    val lat: Double,
+    val lon: Double,
+    val line: String,
+)
