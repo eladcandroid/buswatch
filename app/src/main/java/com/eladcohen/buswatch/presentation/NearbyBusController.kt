@@ -50,6 +50,7 @@ class NearbyBusController(
     @Volatile private var current: List<Stop> = emptyList()
     @Volatile private var lastLoc: Location? = null
     @Volatile private var lastGpsAt = 0L
+    @Volatile private var lastGpsLoc: Location? = null
 
     suspend fun run() = coroutineScope {
         mode.value = store.mode()
@@ -86,9 +87,14 @@ class NearbyBusController(
                 val nowEt = SystemClock.elapsedRealtime()
                 if (loc.provider == LocationManager.GPS_PROVIDER) {
                     lastGpsAt = nowEt
+                    lastGpsLoc = loc
                 } else if (nowEt - lastGpsAt < GPS_PREFER_MS) {
-                    val lastL = lastLoc
-                    if (lastL != null && distMeters(lastL.latitude, lastL.longitude, loc.latitude, loc.longitude) < 200.0) {
+                    // Prefer GPS over coarse network fixes — but only while the last GPS
+                    // fix still reflects where we are. A network fix far from that GPS
+                    // position means we've actually moved; otherwise a stale/replayed GPS
+                    // fix would pin the board to an old spot (e.g. home) indefinitely.
+                    val g = lastGpsLoc
+                    if (g != null && distMeters(g.latitude, g.longitude, loc.latitude, loc.longitude) < GPS_DRIFT_M) {
                         return@collect
                     }
                 }
@@ -184,5 +190,8 @@ class NearbyBusController(
         private const val HYSTERESIS_M = 40.0
         private const val EARTH_R_M = 6_371_000.0
         private const val GPS_PREFER_MS = 60_000L
+        // A network fix farther than this from the last GPS fix means real movement,
+        // so it overrides the GPS-preference window above.
+        private const val GPS_DRIFT_M = 200.0
     }
 }
