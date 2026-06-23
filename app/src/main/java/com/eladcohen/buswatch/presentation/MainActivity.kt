@@ -42,7 +42,10 @@ class MainActivity : ComponentActivity() {
 
     private val searchInput =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
-            val query = RemoteInput.getResultsFromIntent(res.data)
+            // res.data is null when voice search is dismissed without input (back/cancel).
+            // RemoteInput.getResultsFromIntent(null) then NPEs inside the SDK, so guard it.
+            val data = res.data ?: return@registerForActivityResult
+            val query = RemoteInput.getResultsFromIntent(data)
                 ?.getCharSequence(KEY_QUERY)?.toString().orEmpty()
             if (query.isNotBlank()) {
                 val loc = controller.lastLocation()
