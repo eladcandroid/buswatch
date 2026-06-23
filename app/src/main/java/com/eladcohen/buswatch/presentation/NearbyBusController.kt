@@ -87,7 +87,10 @@ class NearbyBusController(
                 if (loc.provider == LocationManager.GPS_PROVIDER) {
                     lastGpsAt = nowEt
                 } else if (nowEt - lastGpsAt < GPS_PREFER_MS) {
-                    return@collect
+                    val lastL = lastLoc
+                    if (lastL != null && distMeters(lastL.latitude, lastL.longitude, loc.latitude, loc.longitude) < 200.0) {
+                        return@collect
+                    }
                 }
 
                 val near = stopsDb.nearestN(loc.latitude, loc.longitude, NEARBY_COUNT)
