@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-**BusWatch** — a standalone **Wear OS** app (OnePlus Watch 3, Wear OS 6) showing live Israeli bus arrivals + a live map, with no phone required. Published to Google Play (Wear track). Hebrew RTL throughout, rotary-crown input.
+**BusWatch** — a standalone **Wear OS** app (OnePlus Watch 4, Wear OS 6) showing live Israeli bus arrivals + a live map, with no phone required. Published to Google Play (Wear track). Hebrew RTL throughout, rotary-crown input.
 
 ## Build & run
 
