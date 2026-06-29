@@ -8,6 +8,7 @@ import android.location.LocationManager
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.eladcohen.buswatch.data.RoutesDb
 import com.eladcohen.buswatch.data.StopStore
 import com.eladcohen.buswatch.data.StopsDb
 import com.eladcohen.buswatch.data.StopsUpdater
@@ -15,7 +16,7 @@ import com.eladcohen.buswatch.location.LocationProvider
 import com.eladcohen.buswatch.model.BusMode
 import com.eladcohen.buswatch.model.Stop
 import com.eladcohen.buswatch.model.StopBoard
-import com.eladcohen.buswatch.net.CurlbusClient
+import com.eladcohen.buswatch.net.ArrivalsSource
 import com.eladcohen.buswatch.net.LinkState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -75,6 +76,7 @@ class NearbyBusController(
         // 3. Load the stops index off the UI path.
         if (current.isEmpty()) statusText.value = "טוען תחנות…"
         runCatching { stopsDb.load() }
+        runCatching { RoutesDb.load(context) } // routeId→line map for schedule backfill
         if (current.isEmpty()) statusText.value = "מאתר תחנות קרובות…"
         Log.i(TAG, "stops=${stopsDb.size} mode=${mode.value}")
 
@@ -158,7 +160,7 @@ class NearbyBusController(
         val results = stops.map { s ->
             async {
                 try {
-                    CurlbusClient.fetch(s.code.toString(), s.name) to true
+                    ArrivalsSource.fetch(s.code.toString(), s.name) to true
                 } catch (e: Exception) {
                     StopBoard(s.name, s.code.toString(), emptyList()) to false
                 }

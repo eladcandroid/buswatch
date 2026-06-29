@@ -37,7 +37,7 @@ import com.eladcohen.buswatch.location.HeadingProvider
 import com.eladcohen.buswatch.model.Arrival
 import com.eladcohen.buswatch.model.LiveBus
 import com.eladcohen.buswatch.model.Stop
-import com.eladcohen.buswatch.net.CurlbusClient
+import com.eladcohen.buswatch.net.ArrivalsSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -93,7 +93,7 @@ fun LineMapScreen(
     // glide old→new across the interval so buses are seen travelling.
     LaunchedEffect(stopCode) {
         while (true) {
-            val res = runCatching { CurlbusClient.fetchStop(stopCode) }.getOrNull()
+            val res = runCatching { ArrivalsSource.fetchStop(stopCode) }.getOrNull()
             res?.let { arrivals = it.first.arrivals }
             val fresh = res?.second ?: emptyList()
             val shownNow = interpolatedBuses(fromByRef, target, anim.value, headingByRef)
