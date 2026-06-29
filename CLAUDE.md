@@ -35,14 +35,15 @@ There is **no automated test suite**. Verification is on-device: drive the UI wi
 
 ## `:app` architecture (the big picture)
 
-Fully standalone — no phone, no GMS (runs on this microG watch), no paid APIs. Three free data sources:
+Fully standalone — no phone, no GMS (runs on this microG watch), no paid APIs. Four free data sources:
 
-- **curlbus.app** (`https://curlbus.app/<stopCode>`) — live MoT SIRI arrivals. **REQUIRES header `Accept: application/json`** or it serves ASCII art. Each visit may carry a live GPS `location` (`{lat,lon}` as strings) + `vehicle_ref`; many arrivals are schedule-only with no `location`.
+- **curlbus.app** (`https://curlbus.app/<stopCode>`) — **primary** live MoT SIRI arrivals. **REQUIRES header `Accept: application/json`** or it serves ASCII art. Each visit may carry a live GPS `location` (`{lat,lon}` as strings) + `vehicle_ref`; many arrivals are schedule-only with no `location`. ⚠️ It's one person's free server (Elad Alfassa) and has gone fully **502 for extended periods** — that outage is why the fallback below exists.
+- **kavnav.com** (`/api/realtime?stopCode=` + `/api/stopSchedule?stopCode=&date=`) — **fallback** when curlbus throws. Same MoT SIRI data, same author. `net/KavNavClient.kt` merges the two endpoints to reproduce curlbus's board: live vehicles (onward-call ETAs + GPS) **plus** timetable backfill (next scheduled departure per line, cached once/stop/day, so a stop in a lull isn't empty). Schedule-only line numbers resolve via the bundled `assets/routes.tsv` (`RoutesDb`, routeId→line, ~58KB). The failover + a 2-min curlbus circuit-breaker live in **`net/ArrivalsSource.kt`** — the single entry point both consumers call (so never call `CurlbusClient`/`KavNavClient` directly). Good-citizen use of a personal project: contactable User-Agent, 30s poll floor. Endpoints are open/no-auth but undocumented — the durable fix is still self-hosting curlbus with a MoT key.
 - **OpenStreetMap raster tiles** (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`) — the map. Free, no key, but **REQUIRES a descriptive `User-Agent`**.
 - **Hasadna open-bus stride API** — source for the bundled stops dataset (build-time, not runtime).
 
 Runtime flow (`presentation/NearbyBusController.kt` orchestrates):
-`LocationProvider` (platform `LocationManager`, no GMS) → `StopsDb.nearestN` → `CurlbusClient.fetchStop` → `boards: StateFlow<List<StopBoard>>` → `BusBoardScreen`. `MainActivity` hosts `controller.run()` under **`repeatOnLifecycle(STARTED)`** so GPS + polling stop when backgrounded (battery). Two modes in `BusMode`: NEARBY (5 closest stops, GPS-driven, hysteresis to avoid flip-flop) and FIXED (one searched stop, ignores GPS); persisted in `StopStore` (SharedPreferences).
+`LocationProvider` (platform `LocationManager`, no GMS) → `StopsDb.nearestN` → `ArrivalsSource.fetchStop` (curlbus→KavNav failover) → `boards: StateFlow<List<StopBoard>>` → `BusBoardScreen`. `MainActivity` hosts `controller.run()` under **`repeatOnLifecycle(STARTED)`** so GPS + polling stop when backgrounded (battery). Two modes in `BusMode`: NEARBY (5 closest stops, GPS-driven, hysteresis to avoid flip-flop) and FIXED (one searched stop, ignores GPS); persisted in `StopStore` (SharedPreferences).
 
 `StopsDb` holds ~29k stops from `app/src/main/assets/stops.tsv` in **parallel primitive arrays** (IntArray/FloatArray + one concatenated names String) to stay memory-lean — not 29k `Stop` objects. Refreshed copy in `filesDir` wins over the bundled asset (`StopsUpdater`, >7 days stale + unmetered).
 
